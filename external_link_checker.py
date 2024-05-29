@@ -13,6 +13,12 @@ visited_urls = set()
 # Dictionary to store external links and their source pages
 external_links = {}
 
+# Dictionary to store proxy settings
+proxies_dic = {
+    #"http": "http://your_proxy:port",
+    #"https": "http://your_proxy:port"
+}
+
 def is_external_link(url, base_url):
     """
     Check if a URL is an external link.
@@ -35,7 +41,7 @@ def scrape_links(url, base_url):
 
         visited_urls.add(url)  # Mark the URL as visited
 
-        response = requests.get(url, verify=False)  # Disable SSL verification
+        response = requests.get(url, proxies=proxies_dic)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
 
