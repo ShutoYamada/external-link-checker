@@ -9,7 +9,45 @@ External Link Checker is a Python-based tool designed to help website administra
 - Easy-to-read reports on the status of external links.
 
 ## Getting Started
-To get started with External Link Checker, clone the repository and follow the instructions in the README file.
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Visual Studio Code with Remote - Containers extension installed
+- WSL (Windows Subsystem for Linux) set up
+
+### Setup
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/ShutoYamada/external-link-checker.git
+    cd external-link-checker
+    ```
+
+2. Open the project in Visual Studio Code.
+
+3. When prompted, select "Reopen in Container" to open the project in a devcontainer.
+
+### Usage
+1. Ensure you are in the root directory of the project.
+
+2. Run the following command to scrape external links and save the results to a CSV file:
+    ```sh
+    python external_link_checker.py https://yourcompanywebsite.com output.csv
+    ```
+
+    Replace `https://yourcompanywebsite.com` with the URL of the website you want to scrape, and `output.csv` with the desired output file name.
+
+## Project Structure
+```
+root/
+├── .devcontainer/
+│ ├── Dockerfile
+│ └── devcontainer.json
+├── requirements.txt
+└── external_link_checker.py
+```
 
 ## Contributions
 Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
+
+## License
+This project is licensed under the MIT License.
