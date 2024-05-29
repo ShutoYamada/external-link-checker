@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.11
 
 # Install any needed packages specified in requirements.txt
 COPY requirements.txt .
