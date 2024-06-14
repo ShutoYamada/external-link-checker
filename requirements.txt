@@ -1,3 +1,5 @@
-beautifulsoup4
 requests
+beautifulsoup4
 urllib3<=1.26
+python-dotenv
+google-cloud-webrisk

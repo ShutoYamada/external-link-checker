@@ -6,8 +6,10 @@ External Link Checker is a Python-based tool designed to help website administra
 
 - Recursively scrape links from a given base URL
 - Identify and collect external links
-- Save external links and their source pages to a CSV file
+- Save external links, their source pages, and safety status to a CSV file
 - Disable SSL verification to handle sites with SSL/TLS issues
+- Proxy support for network configurations
+- Exclude non-http/https links from safety checks but include them in the CSV output
 
 ## Requirements
 
@@ -15,6 +17,8 @@ External Link Checker is a Python-based tool designed to help website administra
 - `requests`
 - `beautifulsoup4`
 - `urllib3`
+- `python-dotenv`
+- `google-cloud-webrisk`
 
 ## Getting Started
 
@@ -30,9 +34,14 @@ External Link Checker is a Python-based tool designed to help website administra
     cd external-link-checker
     ```
 
-2. Open the project in Visual Studio Code.
+2. Create a `.env` file in the project root and add your Google API key:
+    ```plaintext
+    GOOGLE_API_KEY=your_api_key_here
+    ```
 
-3. When prompted, select "Reopen in Container" to open the project in a devcontainer.
+3. Open the project in Visual Studio Code.
+
+4. When prompted, select "Reopen in Container" to open the project in a devcontainer.
 
 ### Usage
 1. Ensure you are in the root directory of the project.
@@ -44,6 +53,9 @@ External Link Checker is a Python-based tool designed to help website administra
 
     Replace `https://yourcompanywebsite.com` with the URL of the website you want to scrape, and `output.csv` with the desired output file name.
 
+### Environment Variables
+- `GOOGLE_API_KEY`: Your Google API key for accessing the Web Risk API.
+
 ## Project Structure
 ```
 root/
@@ -51,7 +63,9 @@ root/
 │ ├── Dockerfile
 │ └── devcontainer.json
 ├── requirements.txt
-└── external_link_checker.py
+├── external_link_checker.py
+└── .env (not included in version control)
+└── .env.example
 ```
 
 ## Contributions
