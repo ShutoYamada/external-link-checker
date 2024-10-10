@@ -49,7 +49,7 @@ def is_external_link(url, base_url):
     :return: 'External' if the URL is an external HTTP/HTTPS link, 'Not Applicable' for mailto, tel, etc., otherwise None
     """
     parsed_url = urlparse(url)
-    if parsed_url.scheme in ['mailto', 'tel', 'javascript']:
+    if parsed_url.scheme in ['mailto', 'tel', 'te', 'javascript']:
         return 'Not Applicable'
     if urlparse(url).netloc != urlparse(base_url).netloc:
         return 'External'
@@ -81,20 +81,14 @@ def check_url_safety(url):
     else:
         return 'Not Checked'
 
-def scrape_links(url, base_url, screenshot_dir, take_screenshots=True, index=1):
+def scrape_links(url, base_url):
     """
     Recursively scrape links from the given URL and optionally take screenshots of external links.
     :param url: The current URL to scrape
     :param base_url: The base URL of the website
-    :param screenshot_dir: Directory to save screenshots
-    :param take_screenshots: Whether or not to take screenshots of external links
-    :param index: Integer index for tracking the current link in the CSV file
     :return: Updated index value for the next link
     """
     try:
-        if url in visited_urls:
-            return index
-
         visited_urls.add(url)
         response = requests.get(url, proxies=proxies_dic)
         response.raise_for_status()
@@ -108,45 +102,15 @@ def scrape_links(url, base_url, screenshot_dir, take_screenshots=True, index=1):
                     parsed_link = urlparse(link)
                     if parsed_link.scheme in ['http', 'https']:
                         safety_status = check_url_safety(link)
+                        external_links[link] = (url, safety_status)
                     else:
                         safety_status = 'Not Applicable'
 
-                    external_links[link] = (url, safety_status)
-
-                    # Optionally take a screenshot of the external link with index
-                    if take_screenshots:
-                        take_screenshot(link, screenshot_dir, index)
-
-                    index += 1
-
-                elif link_type == 'Not Applicable':
-                    # Add the link to the external_links with 'Not Applicable' status
-                    external_links[link] = (url, 'Not Applicable')
-                    index += 1
-
                 else:
-                    index = scrape_links(link, base_url, screenshot_dir, take_screenshots, index)
+                    scrape_links(link, base_url)
 
     except requests.exceptions.RequestException as e:
         print(f"Error scraping {url}: {e} : base={base_url}")
-    return index
-
-def take_screenshot(url, screenshot_dir, index):
-    """
-    Take a screenshot of the provided URL and save it to the specified directory.
-    :param url: URL to take a screenshot of
-    :param screenshot_dir: Directory to save the screenshot
-    :param index: Index of the URL in the CSV file, used to name the screenshot file
-    """
-    try:
-        driver.get(url)
-        time.sleep(2)  # Wait for the page to fully load
-        domain = urlparse(url).netloc.replace("www.", "")
-        screenshot_path = os.path.join(screenshot_dir, f"{index}_{domain}.png")
-        driver.save_screenshot(screenshot_path)
-        print(f"Screenshot saved: {screenshot_path}")
-    except Exception as e:
-        print(f"Error taking screenshot of {url}: {e}")
 
 def save_to_csv(external_links, csv_path):
     """
@@ -175,14 +139,14 @@ def main(base_url, output_path, take_screenshots=True):
     screenshot_dir = output_path
 
     # Scrape links and optionally take screenshots
-    scrape_links(base_url, base_url, screenshot_dir, take_screenshots)
+    scrape_links(base_url, base_url)
 
     # Save the results to the CSV file
     save_to_csv(external_links, csv_path)
     print(f"Saved {len(external_links)} external links to {csv_path}")
 
-    if take_screenshots:
-        print(f"Screenshots saved to {screenshot_dir}")
+    # TODO take_screenshots=Trueならexternal_linksのデータを用いて1件ずつリンク先のスクリーンショットを撮る
+    # TODO スクリーンショットはCSVの行数と対応させるためN_xxxx.example.pngのようなフォーマットにする(N=レコードの連番)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape external links from a website and optionally take screenshots.")
