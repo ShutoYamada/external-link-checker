@@ -83,10 +83,9 @@ def check_url_safety(url):
 
 def scrape_links(url, base_url):
     """
-    Recursively scrape links from the given URL and optionally take screenshots of external links.
+    Recursively scrape links from the given URL.
     :param url: The current URL to scrape
     :param base_url: The base URL of the website
-    :return: Updated index value for the next link
     """
     try:
         visited_urls.add(url)
@@ -124,9 +123,40 @@ def save_to_csv(external_links, csv_path):
         for link, (source, safety_status) in external_links.items():
             csvwriter.writerow([link, source, safety_status])
 
+def take_screenshots_from_csv(csv_path, screenshot_dir):
+    """
+    Read the CSV file and take screenshots for each link.
+    :param csv_path: The path to the CSV file containing the links
+    :param screenshot_dir: The directory to save screenshots
+    """
+    with open(csv_path, 'r', newline='', encoding='utf-8') as csvfile:
+        csvreader = csv.reader(csvfile)
+        next(csvreader)  # Skip the header row
+
+        for index, row in enumerate(csvreader, start=1):
+            link = row[0]
+            take_screenshot(link, screenshot_dir, index)
+
+def take_screenshot(url, screenshot_dir, index):
+    """
+    Take a screenshot of the provided URL and save it to the specified directory.
+    :param url: URL to take a screenshot of
+    :param screenshot_dir: Directory to save the screenshot
+    :param index: Index of the URL in the CSV file, used to name the screenshot file
+    """
+    try:
+        driver.get(url)
+        time.sleep(2)  # Wait for the page to fully load
+        domain = urlparse(url).netloc.replace("www.", "")
+        screenshot_path = os.path.join(screenshot_dir, f"{index}_{domain}.png")
+        driver.save_screenshot(screenshot_path)
+        print(f"Screenshot saved: {screenshot_path}")
+    except Exception as e:
+        print(f"Error taking screenshot of {url}: {e}")
+
 def main(base_url, output_path, take_screenshots=True):
     """
-    Main function to start the scraping process and save results to a CSV file and optionally take screenshots.
+    Main function to scrape links and save results to a CSV file, and optionally take screenshots.
     :param base_url: The base URL of the website to scrape
     :param output_path: Path for the output (CSV file and optionally a directory for screenshots)
     :param take_screenshots: Whether or not to take screenshots of external links
@@ -138,15 +168,17 @@ def main(base_url, output_path, take_screenshots=True):
     csv_path = os.path.join(output_path, 'output.csv')
     screenshot_dir = output_path
 
-    # Scrape links and optionally take screenshots
+    # Scrape links
     scrape_links(base_url, base_url)
 
     # Save the results to the CSV file
     save_to_csv(external_links, csv_path)
     print(f"Saved {len(external_links)} external links to {csv_path}")
 
-    # TODO take_screenshots=Trueならexternal_linksのデータを用いて1件ずつリンク先のスクリーンショットを撮る
-    # TODO スクリーンショットはCSVの行数と対応させるためN_xxxx.example.pngのようなフォーマットにする(N=レコードの連番)
+    # If take_screenshots is True, take screenshots using the CSV file
+    if take_screenshots:
+        take_screenshots_from_csv(csv_path, screenshot_dir)
+        print(f"Screenshots saved to {screenshot_dir}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape external links from a website and optionally take screenshots.")
