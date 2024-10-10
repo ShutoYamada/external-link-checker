@@ -7,6 +7,9 @@ import urllib3
 import os
 from dotenv import load_dotenv
 from google.cloud import webrisk_v1
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,14 +31,29 @@ proxies_dic = {
 # Get the Google API key from environment variables
 google_api_key = os.getenv('GOOGLE_API_KEY')
 
+# Selenium Chrome Driver setup
+chrome_options = Options()
+chrome_options.add_argument('--headless')
+chrome_options.add_argument('--no-sandbox')
+chrome_options.add_argument('--disable-dev-shm-usage')
+chrome_options.add_argument('--lang=ja')  # 言語設定を日本語に変更
+
+# Use the appropriate path for your ChromeDriver
+driver = webdriver.Chrome(options=chrome_options)
+
 def is_external_link(url, base_url):
     """
-    Check if a URL is an external link.
+    Check if a URL is an external link and return the link type.
     :param url: URL to check
     :param base_url: The base URL of the website
-    :return: True if the URL is external, False otherwise
+    :return: 'External' if the URL is an external HTTP/HTTPS link, 'Not Applicable' for mailto, tel, etc., otherwise None
     """
-    return urlparse(url).netloc != urlparse(base_url).netloc
+    parsed_url = urlparse(url)
+    if parsed_url.scheme in ['mailto', 'tel', 'javascript']:
+        return 'Not Applicable'
+    if urlparse(url).netloc != urlparse(base_url).netloc:
+        return 'External'
+    return None
 
 def check_url_safety(url):
     """
@@ -61,22 +79,23 @@ def check_url_safety(url):
             print(f"Error checking URL safety {url}: {e}")
             return 'Unknown'
     else:
-        # If the API key is not set, assume all URLs are safe (or handle differently as needed)
         return 'Not Checked'
 
-def scrape_links(url, base_url):
+def scrape_links(url, base_url, screenshot_dir, take_screenshots=True, index=1):
     """
-    Recursively scrape links from the given URL.
+    Recursively scrape links from the given URL and optionally take screenshots of external links.
     :param url: The current URL to scrape
     :param base_url: The base URL of the website
+    :param screenshot_dir: Directory to save screenshots
+    :param take_screenshots: Whether or not to take screenshots of external links
+    :param index: Integer index for tracking the current link in the CSV file
+    :return: Updated index value for the next link
     """
     try:
-        # Skip already visited URLs
         if url in visited_urls:
-            return
+            return index
 
-        visited_urls.add(url)  # Mark the URL as visited
-
+        visited_urls.add(url)
         response = requests.get(url, proxies=proxies_dic)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -84,45 +103,96 @@ def scrape_links(url, base_url):
         for a_tag in soup.find_all('a', href=True):
             link = urljoin(base_url, a_tag['href'])
             if link not in visited_urls:
-                if is_external_link(link, base_url):
-                    # Check if the link is an HTTP or HTTPS URL
+                link_type = is_external_link(link, base_url)
+                if link_type == 'External':
                     parsed_link = urlparse(link)
                     if parsed_link.scheme in ['http', 'https']:
                         safety_status = check_url_safety(link)
                     else:
                         safety_status = 'Not Applicable'
-                    external_links[link] = (url, safety_status)  # Store the external link, its source page, and safety status
+
+                    external_links[link] = (url, safety_status)
+
+                    # Optionally take a screenshot of the external link with index
+                    if take_screenshots:
+                        take_screenshot(link, screenshot_dir, index)
+
+                    index += 1
+
+                elif link_type == 'Not Applicable':
+                    # Add the link to the external_links with 'Not Applicable' status
+                    external_links[link] = (url, 'Not Applicable')
+                    index += 1
+
                 else:
-                    scrape_links(link, base_url)  # Recursively scrape internal links only
+                    index = scrape_links(link, base_url, screenshot_dir, take_screenshots, index)
 
     except requests.exceptions.RequestException as e:
-        print(f"Error scraping {url}: {e}")
+        print(f"Error scraping {url}: {e} : base={base_url}")
+    return index
 
-def save_to_csv(external_links, output_file):
+def take_screenshot(url, screenshot_dir, index):
+    """
+    Take a screenshot of the provided URL and save it to the specified directory.
+    :param url: URL to take a screenshot of
+    :param screenshot_dir: Directory to save the screenshot
+    :param index: Index of the URL in the CSV file, used to name the screenshot file
+    """
+    try:
+        driver.get(url)
+        time.sleep(2)  # Wait for the page to fully load
+        domain = urlparse(url).netloc.replace("www.", "")
+        screenshot_path = os.path.join(screenshot_dir, f"{index}_{domain}.png")
+        driver.save_screenshot(screenshot_path)
+        print(f"Screenshot saved: {screenshot_path}")
+    except Exception as e:
+        print(f"Error taking screenshot of {url}: {e}")
+
+def save_to_csv(external_links, csv_path):
     """
     Save the collected external links, their source pages, and safety status to a CSV file.
     :param external_links: Dictionary of external links, their source pages, and safety status
-    :param output_file: The output CSV file path
+    :param csv_path: The CSV file path
     """
-    with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(['External Link', 'Source Page', 'Safety Status'])
         for link, (source, safety_status) in external_links.items():
             csvwriter.writerow([link, source, safety_status])
 
-def main(base_url, output_file):
+def main(base_url, output_path, take_screenshots=True):
     """
-    Main function to start the scraping process and save results to a CSV file.
+    Main function to start the scraping process and save results to a CSV file and optionally take screenshots.
     :param base_url: The base URL of the website to scrape
-    :param output_file: The output CSV file path
+    :param output_path: Path for the output (CSV file and optionally a directory for screenshots)
+    :param take_screenshots: Whether or not to take screenshots of external links
     """
-    scrape_links(base_url, base_url)
-    save_to_csv(external_links, output_file)
-    print(f"Saved {len(external_links)} external links to {output_file}")
+    # Ensure output directory exists
+    os.makedirs(output_path, exist_ok=True)
+
+    # Paths for the CSV file and screenshot directory
+    csv_path = os.path.join(output_path, 'output.csv')
+    screenshot_dir = output_path
+
+    # Scrape links and optionally take screenshots
+    scrape_links(base_url, base_url, screenshot_dir, take_screenshots)
+
+    # Save the results to the CSV file
+    save_to_csv(external_links, csv_path)
+    print(f"Saved {len(external_links)} external links to {csv_path}")
+
+    if take_screenshots:
+        print(f"Screenshots saved to {screenshot_dir}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Scrape external links from a website.")
+    parser = argparse.ArgumentParser(description="Scrape external links from a website and optionally take screenshots.")
     parser.add_argument("base_url", help="The base URL of the website to scrape")
-    parser.add_argument("output_file", help="The output CSV file")
+    parser.add_argument("output_path", help="The output path (directory for CSV and screenshots)")
+    parser.add_argument("--no-screenshots", action="store_true", help="Do not take screenshots of external links")
     args = parser.parse_args()
-    main(args.base_url, args.output_file)
+
+    # Call the main function with the appropriate flags
+    main(args.base_url, args.output_path, take_screenshots=not args.no_screenshots)
+
+# Don't forget to close the driver when done
+driver.quit()

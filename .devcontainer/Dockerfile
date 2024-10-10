@@ -4,11 +4,14 @@ FROM python:3.11
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install other necessary tools
+# Install Chrome and ChromeDriver for Selenium
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    chromium \
+    chromium-driver \
+    fonts-noto-cjk \
     && apt-get clean
 
-# Set the working directory
-WORKDIR /workspace
+# Install Selenium
+RUN pip install selenium

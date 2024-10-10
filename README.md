@@ -46,12 +46,19 @@ External Link Checker is a Python-based tool designed to help website administra
 ### Usage
 1. Ensure you are in the root directory of the project.
 
-2. Run the following command to scrape external links and save the results to a CSV file:
+2. Run the following command to scrape external links and save the results to a CSV file and screenshots in a specified directory:
     ```sh
-    python external_link_checker.py https://yourcompanywebsite.com output.csv
+    python external_link_checker.py https://yourcompanywebsite.com output
     ```
 
-    Replace `https://yourcompanywebsite.com` with the URL of the website you want to scrape, and `output.csv` with the desired output file name.
+Replace `https://yourcompanywebsite.com` with the URL of the website you want to scrape, and `output` with the desired output directory name. The tool will save the external links and their details to `output/output.csv`, and screenshots of the external links to the `output/` directory.
+
+To scrape external links without saving screenshots, use the `--no-screenshots` option:
+    ```sh
+    python external_link_checker.py https://yourcompanywebsite.com output --no-screenshots
+    ```
+
+In this case, only the CSV file (`output/output.csv`) will be saved, and no screenshots will be taken.
 
 ### Environment Variables
 - `GOOGLE_API_KEY`: Your Google API key for accessing the Web Risk API.
