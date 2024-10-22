@@ -39,9 +39,17 @@ External Link Checker is a Python-based tool designed to help website administra
     GOOGLE_API_KEY=your_api_key_here
     ```
 
-3. Open the project in Visual Studio Code.
+3. Create a `whitelist.txt` file in the project root and add your white list domains:
+    ```plaintext
+    www.google.com
+    google.com
 
-4. When prompted, select "Reopen in Container" to open the project in a devcontainer.
+    // ...andmore
+    ```
+
+4. Open the project in Visual Studio Code.
+
+5. When prompted, select "Reopen in Container" to open the project in a devcontainer.
 
 ### Usage
 1. Ensure you are in the root directory of the project.

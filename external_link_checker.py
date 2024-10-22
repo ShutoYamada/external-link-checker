@@ -80,12 +80,36 @@ def check_url_safety(url):
             return 'Unknown'
     else:
         return 'Not Checked'
-
-def scrape_links(url, base_url):
+    
+def load_whitelist(file_path):
     """
-    Recursively scrape links from the given URL.
+    Load the whitelist of trusted domains from a text file.
+    :param file_path: Path to the whitelist file
+    :return: Set of whitelisted domains
+    """
+    if not os.path.exists(file_path):
+        print(f"Whitelist file not found: {file_path}")
+        return set()
+    
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return set(line.strip() for line in file if line.strip())
+
+def is_whitelisted(url, whitelist_domains):
+    """
+    Check if a URL's domain is in the whitelist.
+    :param url: URL to check
+    :param whitelist_domains: Set of whitelisted domains
+    :return: True if the URL's domain is whitelisted, False otherwise
+    """
+    domain = urlparse(url).netloc
+    return domain in whitelist_domains
+
+def scrape_links(url, base_url, whitelist_domains):
+    """
+    Recursively scrape links from the given URL, skipping whitelisted domains.
     :param url: The current URL to scrape
     :param base_url: The base URL of the website
+    :param whitelist_domains: Set of whitelisted domains to skip
     """
     try:
         visited_urls.add(url)
@@ -97,6 +121,12 @@ def scrape_links(url, base_url):
             link = urljoin(base_url, a_tag['href'])
             if link not in visited_urls:
                 link_type = is_external_link(link, base_url)
+                
+                # Skip processing if the domain is whitelisted
+                if is_whitelisted(link, whitelist_domains):
+                    print(f"Skipping whitelisted domain: {urlparse(link).netloc}")
+                    continue
+
                 if link_type == 'External':
                     parsed_link = urlparse(link)
                     if parsed_link.scheme in ['http', 'https']:
@@ -106,7 +136,7 @@ def scrape_links(url, base_url):
                         safety_status = 'Not Applicable'
 
                 else:
-                    scrape_links(link, base_url)
+                    scrape_links(link, base_url, whitelist_domains)
 
     except requests.exceptions.RequestException as e:
         print(f"Error scraping {url}: {e} : base={base_url}")
@@ -166,6 +196,10 @@ def main(base_url, output_path, take_screenshots=True):
     :param output_path: Path for the output (CSV file and optionally a directory for screenshots)
     :param take_screenshots: Whether or not to take screenshots of external links
     """
+    # Load whitelist
+    whitelist_domains = load_whitelist('whitelist.txt')
+    print(f"Loaded {len(whitelist_domains)} whitelisted domains.")
+
     # Ensure output directory exists
     os.makedirs(output_path, exist_ok=True)
 
@@ -174,7 +208,7 @@ def main(base_url, output_path, take_screenshots=True):
     screenshot_dir = output_path
 
     # Scrape links
-    scrape_links(base_url, base_url)
+    scrape_links(base_url, base_url, whitelist_domains)
 
     # Save the results to the CSV file
     save_to_csv(external_links, csv_path)
