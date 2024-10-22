@@ -113,14 +113,19 @@ def scrape_links(url, base_url):
 
 def save_to_csv(external_links, csv_path):
     """
-    Save the collected external links, their source pages, and safety status to a CSV file.
+    Save the collected external links, their source pages, and safety status to a CSV file, sorted by external link.
     :param external_links: Dictionary of external links, their source pages, and safety status
     :param csv_path: The CSV file path
     """
+    # Sort the external_links by the external link (key) in lexicographical order
+    sorted_links = sorted(external_links.items(), key=lambda item: item[0])
+
     with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(['External Link', 'Source Page', 'Safety Status'])
-        for link, (source, safety_status) in external_links.items():
+        
+        # Write the sorted external links to the CSV file
+        for link, (source, safety_status) in sorted_links:
             csvwriter.writerow([link, source, safety_status])
 
 def take_screenshots_from_csv(csv_path, screenshot_dir):
