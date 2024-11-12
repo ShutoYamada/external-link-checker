@@ -180,6 +180,7 @@ def take_screenshot(url, screenshot_dir, index):
     :param index: Index of the URL in the CSV file, used to name the screenshot file
     """
     try:
+        driver.set_page_load_timeout(10)  # Set timeout to 10 seconds
         driver.get(url)
         time.sleep(2)  # Wait for the page to fully load
         domain = urlparse(url).netloc.replace("www.", "")
